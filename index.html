@@ -7,8 +7,200 @@
     <meta name="description" content="上海首家24H智能健身房，专业器械·明星教练·科学方案。" />
     <script type="module" crossorigin src="/-/assets/index-BC9R51cl.js"></script>
     <link rel="stylesheet" crossorigin href="/-/assets/index-DTZpxtkZ.css">
+    <style>
+      /* SSO 登录按钮样式 */
+      .sso-button-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+      }
+      .sso-login-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 30px;
+        color: white;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .sso-login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+      .user-badge {
+        background: rgba(22, 27, 34, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(48, 54, 61, 0.5);
+        border-radius: 30px;
+        padding: 6px 16px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+        font-weight: 500;
+      }
+      .user-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .logout-link {
+        color: #f85149;
+        cursor: pointer;
+        padding-left: 10px;
+        margin-left: 5px;
+        border-left: 1px solid rgba(255,255,255,0.2);
+      }
+      .logout-link:hover { color: #ff7b72; }
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #21262d;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 12px 20px;
+        color: white;
+        font-size: 14px;
+        z-index: 10001;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      }
+      .toast.success { border-left: 3px solid #238636; }
+      .toast.error { border-left: 3px solid #f85149; }
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- SSO 容器 -->
+    <div class="sso-button-container" id="ssoContainer"></div>
+    
+    <script>
+      // SSO 配置
+      const API_BASE = 'https://sso-calk-server-ptfnvdwoua.cn-beijing.fcapp.run';
+      const SSO_CONFIG = {
+        appId: '1776997362',
+        loginUrl: 'https://service.100tal.com/new/sso/login',
+        logoutUrl: 'https://service.100tal.com/new/sso/logout'
+      };
+      
+      function showToast(message, type = 'success') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+      
+      function getCodeFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('code');
+      }
+      
+      function renderLoginButton() {
+        const container = document.getElementById('ssoContainer');
+        if (!container) return;
+        container.innerHTML = `
+          <button class="sso-login-btn" onclick="ssoLogin()">
+            🔐 员工登录
+          </button>
+        `;
+      }
+      
+      function renderUserBadge(userData) {
+        const userName = userData.name || userData.userName || userData.nickname || userData.employeeName || '用户';
+        const container = document.getElementById('ssoContainer');
+        if (!container) return;
+        container.innerHTML = `
+          <div class="user-badge">
+            <span class="user-avatar">👤</span>
+            <span>${userName}</span>
+            <span class="logout-link" onclick="event.stopPropagation(); ssoLogout()">退出</span>
+          </div>
+        `;
+      }
+      
+      window.ssoLogin = function() {
+        const redirectUri = window.location.href.split('?')[0];
+        const loginUrl = `${SSO_CONFIG.loginUrl}?appId=${SSO_CONFIG.appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        window.location.href = loginUrl;
+      };
+      
+      window.ssoLogout = async function() {
+        try {
+          await fetch(`${API_BASE}/api/sso/logout`, { method: 'POST' });
+        } catch(e) {}
+        localStorage.removeItem('ssoUser');
+        window.location.href = `${SSO_CONFIG.logoutUrl}?appId=${SSO_CONFIG.appId}`;
+      };
+      
+      async function handleSSOCallback() {
+        const code = getCodeFromUrl();
+        if (!code) return;
+        
+        renderLoginButton(); // 临时显示"登录中"
+        
+        try {
+          const response = await fetch(`${API_BASE}/api/sso/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+          });
+          const result = await response.json();
+          
+          if (result.success) {
+            localStorage.setItem('ssoUser', JSON.stringify(result.data));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            renderUserBadge(result.data);
+            showToast(`欢迎，${result.data.name || result.data.userName || '用户'}！`, 'success');
+          } else {
+            renderLoginButton();
+            showToast('登录失败: ' + (result.message || '未知错误'), 'error');
+          }
+        } catch (error) {
+          console.error('SSO error:', error);
+          renderLoginButton();
+          showToast('网络错误，请稍后重试', 'error');
+        }
+      }
+      
+      function initSSO() {
+        const savedUser = localStorage.getItem('ssoUser');
+        if (savedUser) {
+          try {
+            renderUserBadge(JSON.parse(savedUser));
+          } catch(e) { renderLoginButton(); }
+        } else {
+          handleSSOCallback();
+        }
+      }
+      
+      // 等待 React 应用加载完成后初始化
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSSO);
+      } else {
+        initSSO();
+      }
+    </script>
   </body>
 </html>
