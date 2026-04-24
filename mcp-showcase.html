@@ -94,6 +94,57 @@
     }
     .nav-btn.primary:hover { background: var(--accent-hover); }
 
+    /* SSO 登录按钮样式 */
+    .sso-login-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 20px;
+      color: white;
+      padding: 5px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sso-login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    .user-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .user-badge:hover { background: #30363d; }
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    .logout-link {
+      color: #f85149;
+      cursor: pointer;
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: 1px solid var(--border);
+    }
+    .logout-link:hover { color: #ff7b72; }
+
     /* ── ORG HEADER ── */
     .org-header {
       border-bottom: 1px solid var(--border);
@@ -425,6 +476,28 @@
       gap: 4px;
     }
 
+    /* ── TOAST 通知 ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      color: var(--text-primary);
+      font-size: 14px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    .toast.success { border-left: 3px solid var(--accent); }
+    .toast.error { border-left: 3px solid #f85149; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
     @media (max-width: 900px) {
       .pinned-grid { grid-template-columns: 1fr; }
     }
@@ -443,7 +516,9 @@
   <div class="spacer"></div>
   <input class="nav-search" type="text" placeholder="搜索 MCP 工具..." id="navSearch" />
   <a class="nav-btn" href="#">文档</a>
-  <a class="nav-btn primary" href="#">+ 提交工具</a>
+  <a class="nav-btn" href="#">+ 提交工具</a>
+  <!-- SSO 按钮位置 -->
+  <div id="ssoContainer"></div>
 </nav>
 
 <!-- ══ ORG HEADER ══ -->
@@ -567,135 +642,121 @@
 </footer>
 
 <script>
+  // ==================== SSO 登录模块 ====================
+  const API_BASE = 'https://sso-calk-server-ptfnvdwoua.cn-beijing.fcapp.run';
+  const SSO_CONFIG = {
+    appId: '1776997362',
+    loginUrl: 'https://service.100tal.com/new/sso/login',
+    logoutUrl: 'https://service.100tal.com/new/sso/logout'
+  };
+
+  function showToast(message, type = 'success') {
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) existingToast.remove();
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  function getCodeFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('code');
+  }
+
+  function renderSSOButton() {
+    const container = document.getElementById('ssoContainer');
+    container.innerHTML = `
+      <button class="sso-login-btn" onclick="ssoLogin()">
+        🔐 造物神登录
+      </button>
+    `;
+  }
+
+  function renderUserBadge(userData) {
+    const userName = userData.name || userData.userName || userData.nickname || userData.employeeName || '用户';
+    const container = document.getElementById('ssoContainer');
+    container.innerHTML = `
+      <div class="user-badge" onclick="toggleUserMenu()">
+        <span class="user-avatar">👤</span>
+        <span>${userName}</span>
+        <span class="logout-link" onclick="event.stopPropagation(); ssoLogout()">退出</span>
+      </div>
+    `;
+  }
+
+  window.ssoLogin = function() {
+    const redirectUri = window.location.href.split('?')[0];
+    const loginUrl = `${SSO_CONFIG.loginUrl}?appId=${SSO_CONFIG.appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    window.location.href = loginUrl;
+  };
+
+  window.ssoLogout = async function() {
+    try {
+      await fetch(`${API_BASE}/api/sso/logout`, { method: 'POST' });
+    } catch(e) {}
+    localStorage.removeItem('ssoUser');
+    window.location.href = `${SSO_CONFIG.logoutUrl}?appId=${SSO_CONFIG.appId}`;
+  };
+
+  async function handleSSOCallback() {
+    const code = getCodeFromUrl();
+    if (!code) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/sso/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        localStorage.setItem('ssoUser', JSON.stringify(result.data));
+        window.history.replaceState({}, document.title, window.location.pathname);
+        renderUserBadge(result.data);
+        showToast(`欢迎回来，${result.data.name || result.data.userName || '用户'}！`, 'success');
+      } else {
+        renderSSOButton();
+        showToast('登录失败: ' + (result.message || '未知错误'), 'error');
+      }
+    } catch (error) {
+      console.error('SSO error:', error);
+      renderSSOButton();
+      showToast('网络错误: ' + error.message, 'error');
+    }
+  }
+
+  function initSSO() {
+    const savedUser = localStorage.getItem('ssoUser');
+    if (savedUser) {
+      try {
+        renderUserBadge(JSON.parse(savedUser));
+      } catch(e) { renderSSOButton(); }
+    } else {
+      handleSSOCallback();
+    }
+  }
+
+  // ==================== 原有 MCP 仓库功能 ====================
   const REPOS = [
-    {
-      name: "mcp-specification",
-      desc: "The official Model Context Protocol specification — defining the standard for AI-to-tool communication.",
-      tags: ["specification", "protocol", "official"],
-      lang: "Markdown", langColor: "#083fa1",
-      stars: 12400, forks: 834, updated: "2小时前",
-      badge: "Public",
-    },
-    {
-      name: "servers",
-      desc: "官方 MCP 服务器参考实现集合，包含文件系统、数据库、浏览器、搜索等各类工具。",
-      tags: ["server", "reference", "tools", "official"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 9800, forks: 1230, updated: "5小时前",
-      badge: "Public",
-    },
-    {
-      name: "create-mcp-server",
-      desc: "Zero-config CLI scaffold for creating MCP servers. Get started in seconds.",
-      tags: ["sdk", "cli", "server", "scaffold"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 8700, forks: 420, updated: "1天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-filesystem-server",
-      desc: "MCP server for secure local filesystem access — read, write, list, and search files within allowed directories.",
-      tags: ["server", "filesystem", "tools"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 5200, forks: 310, updated: "3天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-postgres-server",
-      desc: "PostgreSQL MCP server — AI models can read schemas, execute queries, and explore relational data safely.",
-      tags: ["server", "database", "postgresql"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 4800, forks: 270, updated: "2天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-github-server",
-      desc: "GitHub MCP server: search repos, read code, manage issues and PRs directly from AI assistants.",
-      tags: ["server", "github", "web", "tools"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 4400, forks: 250, updated: "4小时前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-web-search-server",
-      desc: "Web search MCP server powered by multiple search engines. Enable AI models to browse the web in real time.",
-      tags: ["server", "web", "search"],
-      lang: "Python", langColor: "#3572A5",
-      stars: 3900, forks: 195, updated: "1天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-python-sdk",
-      desc: "Official Python SDK for building and connecting to MCP servers. Supports async, streaming, and tool registration.",
-      tags: ["sdk", "python", "client"],
-      lang: "Python", langColor: "#3572A5",
-      stars: 3500, forks: 340, updated: "6小时前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-typescript-sdk",
-      desc: "Official TypeScript/Node.js SDK for the Model Context Protocol. Type-safe, fast, and easy to use.",
-      tags: ["sdk", "typescript", "client"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 3200, forks: 290, updated: "8小时前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-browser-server",
-      desc: "Headless browser MCP server using Playwright. Enables AI models to navigate, screenshot, and scrape pages.",
-      tags: ["server", "browser", "web", "playwright"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 2900, forks: 180, updated: "2天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-slack-server",
-      desc: "Slack MCP server — list channels, send messages, search history, and manage workspace resources.",
-      tags: ["server", "slack", "tools", "cloud"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 2600, forks: 140, updated: "3天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-go-sdk",
-      desc: "Go language SDK for implementing MCP servers and clients. High-performance and production-ready.",
-      tags: ["sdk", "go", "client", "server"],
-      lang: "Go", langColor: "#00ADD8",
-      stars: 2100, forks: 120, updated: "5天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-mysql-server",
-      desc: "MySQL/MariaDB MCP server for safe SQL execution and schema introspection in AI workflows.",
-      tags: ["server", "database", "mysql"],
-      lang: "Python", langColor: "#3572A5",
-      stars: 1900, forks: 95, updated: "4天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-aws-server",
-      desc: "AWS services MCP server — S3, DynamoDB, Lambda, EC2 and more, accessible from any MCP client.",
-      tags: ["server", "cloud", "aws"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 1750, forks: 88, updated: "1天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-vector-search-server",
-      desc: "Vector database MCP server supporting Pinecone, Weaviate, and Qdrant for semantic search use cases.",
-      tags: ["server", "ai", "database", "vector"],
-      lang: "Python", langColor: "#3572A5",
-      stars: 1600, forks: 72, updated: "6天前",
-      badge: "Public",
-    },
-    {
-      name: "mcp-inspector",
-      desc: "Visual tool for testing and debugging MCP servers. See requests, responses, and tool calls in real time.",
-      tags: ["tools", "debug", "inspector"],
-      lang: "TypeScript", langColor: "#3178c6",
-      stars: 1400, forks: 65, updated: "2天前",
-      badge: "Public",
-    },
+    { name: "mcp-specification", desc: "The official Model Context Protocol specification — defining the standard for AI-to-tool communication.", tags: ["specification", "protocol", "official"], lang: "Markdown", langColor: "#083fa1", stars: 12400, forks: 834, updated: "2小时前", badge: "Public" },
+    { name: "servers", desc: "官方 MCP 服务器参考实现集合，包含文件系统、数据库、浏览器、搜索等各类工具。", tags: ["server", "reference", "tools", "official"], lang: "TypeScript", langColor: "#3178c6", stars: 9800, forks: 1230, updated: "5小时前", badge: "Public" },
+    { name: "create-mcp-server", desc: "Zero-config CLI scaffold for creating MCP servers. Get started in seconds.", tags: ["sdk", "cli", "server", "scaffold"], lang: "TypeScript", langColor: "#3178c6", stars: 8700, forks: 420, updated: "1天前", badge: "Public" },
+    { name: "mcp-filesystem-server", desc: "MCP server for secure local filesystem access — read, write, list, and search files within allowed directories.", tags: ["server", "filesystem", "tools"], lang: "TypeScript", langColor: "#3178c6", stars: 5200, forks: 310, updated: "3天前", badge: "Public" },
+    { name: "mcp-postgres-server", desc: "PostgreSQL MCP server — AI models can read schemas, execute queries, and explore relational data safely.", tags: ["server", "database", "postgresql"], lang: "TypeScript", langColor: "#3178c6", stars: 4800, forks: 270, updated: "2天前", badge: "Public" },
+    { name: "mcp-github-server", desc: "GitHub MCP server: search repos, read code, manage issues and PRs directly from AI assistants.", tags: ["server", "github", "web", "tools"], lang: "TypeScript", langColor: "#3178c6", stars: 4400, forks: 250, updated: "4小时前", badge: "Public" },
+    { name: "mcp-web-search-server", desc: "Web search MCP server powered by multiple search engines. Enable AI models to browse the web in real time.", tags: ["server", "web", "search"], lang: "Python", langColor: "#3572A5", stars: 3900, forks: 195, updated: "1天前", badge: "Public" },
+    { name: "mcp-python-sdk", desc: "Official Python SDK for building and connecting to MCP servers. Supports async, streaming, and tool registration.", tags: ["sdk", "python", "client"], lang: "Python", langColor: "#3572A5", stars: 3500, forks: 340, updated: "6小时前", badge: "Public" },
+    { name: "mcp-typescript-sdk", desc: "Official TypeScript/Node.js SDK for the Model Context Protocol. Type-safe, fast, and easy to use.", tags: ["sdk", "typescript", "client"], lang: "TypeScript", langColor: "#3178c6", stars: 3200, forks: 290, updated: "8小时前", badge: "Public" },
+    { name: "mcp-browser-server", desc: "Headless browser MCP server using Playwright. Enables AI models to navigate, screenshot, and scrape pages.", tags: ["server", "browser", "web", "playwright"], lang: "TypeScript", langColor: "#3178c6", stars: 2900, forks: 180, updated: "2天前", badge: "Public" },
+    { name: "mcp-slack-server", desc: "Slack MCP server — list channels, send messages, search history, and manage workspace resources.", tags: ["server", "slack", "tools", "cloud"], lang: "TypeScript", langColor: "#3178c6", stars: 2600, forks: 140, updated: "3天前", badge: "Public" },
+    { name: "mcp-go-sdk", desc: "Go language SDK for implementing MCP servers and clients. High-performance and production-ready.", tags: ["sdk", "go", "client", "server"], lang: "Go", langColor: "#00ADD8", stars: 2100, forks: 120, updated: "5天前", badge: "Public" },
+    { name: "mcp-mysql-server", desc: "MySQL/MariaDB MCP server for safe SQL execution and schema introspection in AI workflows.", tags: ["server", "database", "mysql"], lang: "Python", langColor: "#3572A5", stars: 1900, forks: 95, updated: "4天前", badge: "Public" },
+    { name: "mcp-aws-server", desc: "AWS services MCP server — S3, DynamoDB, Lambda, EC2 and more, accessible from any MCP client.", tags: ["server", "cloud", "aws"], lang: "TypeScript", langColor: "#3178c6", stars: 1750, forks: 88, updated: "1天前", badge: "Public" },
+    { name: "mcp-vector-search-server", desc: "Vector database MCP server supporting Pinecone, Weaviate, and Qdrant for semantic search use cases.", tags: ["server", "ai", "database", "vector"], lang: "Python", langColor: "#3572A5", stars: 1600, forks: 72, updated: "6天前", badge: "Public" },
+    { name: "mcp-inspector", desc: "Visual tool for testing and debugging MCP servers. See requests, responses, and tool calls in real time.", tags: ["tools", "debug", "inspector"], lang: "TypeScript", langColor: "#3178c6", stars: 1400, forks: 65, updated: "2天前", badge: "Public" }
   ];
 
   const PER_PAGE = 8;
@@ -733,7 +794,6 @@
         </div>
       </div>
     `).join('');
-
     renderPagination();
   }
 
@@ -817,6 +877,7 @@
   // Init
   filtered.sort((a,b) => b.stars - a.stars);
   renderRepos();
+  initSSO();
 </script>
 </body>
 </html>
