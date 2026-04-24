@@ -1,883 +1,150 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MCP Hub - Model Context Protocol 工具集</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --surface2: #21262d;
-      --border: #30363d;
-      --text-primary: #e6edf3;
-      --text-secondary: #8b949e;
-      --text-muted: #6e7681;
-      --accent: #238636;
-      --accent-hover: #2ea043;
-      --link: #58a6ff;
-      --link-hover: #79c0ff;
-      --tag-bg: #1f6feb26;
-      --tag-text: #58a6ff;
-      --star: #e3b341;
-      --radius: 6px;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text-primary);
-      min-height: 100vh;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    /* ── NAV ── */
-    nav {
-      background: #010409;
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      height: 62px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      text-decoration: none;
-      color: var(--text-primary);
-      font-weight: 600;
-      font-size: 16px;
-    }
-    .nav-logo svg { width: 32px; height: 32px; fill: var(--text-primary); }
-    nav .spacer { flex: 1; }
-    .nav-search {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 5px 12px;
-      color: var(--text-primary);
-      font-size: 14px;
-      width: 280px;
-      outline: none;
-      transition: border-color .2s, width .2s;
-    }
-    .nav-search:focus { border-color: var(--link); width: 340px; }
-    .nav-search::placeholder { color: var(--text-muted); }
-    .nav-btn {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text-primary);
-      padding: 5px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background .15s;
-    }
-    .nav-btn:hover { background: #30363d; }
-    .nav-btn.primary {
-      background: var(--accent);
-      border-color: #2ea04326;
-      color: #fff;
-    }
-    .nav-btn.primary:hover { background: var(--accent-hover); }
-
-    /* SSO 登录按钮样式 */
-    .sso-login-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      border-radius: 20px;
-      color: white;
-      padding: 5px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .sso-login-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-    .user-badge {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    .user-badge:hover { background: #30363d; }
-    .user-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-    }
-    .logout-link {
-      color: #f85149;
-      cursor: pointer;
-      margin-left: 8px;
-      padding-left: 8px;
-      border-left: 1px solid var(--border);
-    }
-    .logout-link:hover { color: #ff7b72; }
-
-    /* ── ORG HEADER ── */
-    .org-header {
-      border-bottom: 1px solid var(--border);
-      padding: 32px 0 0;
-    }
-    .org-header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 24px;
-      display: flex;
-      gap: 24px;
-      align-items: flex-start;
-    }
-    .org-avatar {
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      border: 3px solid var(--border);
-      background: linear-gradient(135deg, #238636, #1a7f37, #0d4d21);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-      flex-shrink: 0;
-    }
-    .org-info { flex: 1; }
-    .org-name {
-      font-size: 26px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .org-handle { color: var(--text-secondary); font-size: 18px; margin-bottom: 12px; }
-    .org-desc { color: var(--text-secondary); margin-bottom: 12px; max-width: 600px; }
-    .org-meta {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      color: var(--text-secondary);
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
-    .org-meta a { color: var(--link); text-decoration: none; }
-    .org-meta a:hover { text-decoration: underline; }
-    .org-meta span { display: flex; align-items: center; gap: 5px; }
-
-    /* ── TABS ── */
-    .org-tabs {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 24px;
-      display: flex;
-      gap: 0;
-      margin-top: 16px;
-    }
-    .tab {
-      padding: 8px 16px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: color .15s;
-      text-decoration: none;
-    }
-    .tab:hover { color: var(--text-primary); }
-    .tab.active {
-      color: var(--text-primary);
-      border-bottom-color: #f78166;
-      font-weight: 600;
-    }
-    .tab .count {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 1px 8px;
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    /* ── MAIN LAYOUT ── */
-    .main {
-      max-width: 1280px;
-      margin: 24px auto;
-      padding: 0 24px;
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      gap: 24px;
-    }
-
-    /* ── SIDEBAR ── */
-    .sidebar {}
-    .sidebar-section { margin-bottom: 24px; }
-    .sidebar-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: var(--text-secondary);
-      margin-bottom: 12px;
-    }
-    .topic-tag {
-      display: inline-block;
-      background: var(--tag-bg);
-      color: var(--tag-text);
-      border: 1px solid #1f6feb40;
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 12px;
-      margin: 3px;
-      cursor: pointer;
-      transition: background .15s;
-      text-decoration: none;
-    }
-    .topic-tag:hover { background: #1f6feb40; }
-    .topic-tag.active {
-      background: var(--link);
-      color: #000;
-      border-color: var(--link);
-    }
-    .lang-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 0;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 13px;
-      border-radius: 4px;
-      padding: 5px 8px;
-      transition: background .15s;
-    }
-    .lang-item:hover { background: var(--surface2); color: var(--text-primary); }
-    .lang-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 8px;
-    }
-    .lang-left { display: flex; align-items: center; }
-    .lang-count { color: var(--text-muted); font-size: 12px; }
-
-    /* ── REPO LIST ── */
-    .repo-list-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-    .repo-count { color: var(--text-secondary); font-size: 14px; }
-    .repo-count strong { color: var(--text-primary); }
-    .sort-select {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text-primary);
-      padding: 5px 12px;
-      font-size: 14px;
-      cursor: pointer;
-      outline: none;
-    }
-
-    .repo-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 12px;
-      display: grid;
-      grid-template-rows: auto;
-      transition: border-color .2s;
-    }
-    .repo-card:hover { border-color: var(--text-muted); }
-    .repo-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
-    .repo-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--link);
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .repo-name:hover { text-decoration: underline; }
-    .repo-badge {
-      font-size: 11px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 2px 8px;
-      color: var(--text-secondary);
-      font-weight: 400;
-    }
-    .repo-desc {
-      color: var(--text-secondary);
-      font-size: 13px;
-      margin: 8px 0 12px;
-      line-height: 1.5;
-    }
-    .repo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .repo-tag {
-      background: var(--tag-bg);
-      color: var(--tag-text);
-      border-radius: 20px;
-      padding: 2px 10px;
-      font-size: 12px;
-      text-decoration: none;
-      transition: background .15s;
-    }
-    .repo-tag:hover { background: #1f6feb40; }
-    .repo-meta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-    .repo-meta span { display: flex; align-items: center; gap: 4px; }
-    .lang-indicator { width: 10px; height: 10px; border-radius: 50%; }
-    .star-btn {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text-secondary);
-      padding: 3px 12px;
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      transition: all .15s;
-      white-space: nowrap;
-    }
-    .star-btn:hover { background: #30363d; color: var(--text-primary); }
-    .star-btn.starred { color: var(--star); }
-
-    /* ── PAGINATION ── */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      gap: 4px;
-      margin: 32px 0;
-    }
-    .page-btn {
-      min-width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 13px;
-      padding: 0 10px;
-      transition: all .15s;
-      text-decoration: none;
-    }
-    .page-btn:hover { background: var(--surface2); color: var(--text-primary); }
-    .page-btn.active {
-      background: var(--link);
-      border-color: var(--link);
-      color: #000;
-      font-weight: 600;
-    }
-    .page-btn:disabled { opacity: .4; cursor: default; }
-
-    /* ── FOOTER ── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 24px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-    footer a { color: var(--text-muted); text-decoration: none; margin: 0 8px; }
-    footer a:hover { color: var(--link); text-decoration: underline; }
-
-    /* ── FILTER BAR ── */
-    .filter-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    .filter-input {
-      flex: 1;
-      min-width: 200px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 6px 12px;
-      color: var(--text-primary);
-      font-size: 14px;
-      outline: none;
-    }
-    .filter-input:focus { border-color: var(--link); }
-    .filter-input::placeholder { color: var(--text-muted); }
-
-    @media (max-width: 768px) {
-      .main { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
-      .org-header-inner { flex-direction: column; }
-      .nav-search { display: none; }
-    }
-
-    /* ── PINNED REPOS ── */
-    .pinned-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .pinned-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      transition: border-color .2s;
-    }
-    .pinned-card:hover { border-color: var(--text-muted); }
-    .pinned-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* ── TOAST 通知 ── */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 20px;
-      color: var(--text-primary);
-      font-size: 14px;
-      z-index: 1000;
-      animation: slideIn 0.3s ease;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-    .toast.success { border-left: 3px solid var(--accent); }
-    .toast.error { border-left: 3px solid #f85149; }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    @media (max-width: 900px) {
-      .pinned-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSO 测试页面</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        h1 { margin: 0 0 10px; color: #333; }
+        p { color: #666; margin-bottom: 30px; }
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 14px 30px;
+            font-size: 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+        }
+        .user-info {
+            background: #f5f5f5;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .logout-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .error { color: #dc3545; background: #ffe6e6; padding: 12px; border-radius: 12px; margin-top: 15px; }
+    </style>
 </head>
 <body>
-
-<!-- ══ NAV ══ -->
-<nav>
-  <a class="nav-logo" href="#">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-    </svg>
-    MCP Hub
-  </a>
-  <div class="spacer"></div>
-  <input class="nav-search" type="text" placeholder="搜索 MCP 工具..." id="navSearch" />
-  <a class="nav-btn" href="#">文档</a>
-  <a class="nav-btn" href="#">+ 提交工具</a>
-  <!-- SSO 按钮位置 -->
-  <div id="ssoContainer"></div>
-</nav>
-
-<!-- ══ ORG HEADER ══ -->
-<div class="org-header">
-  <div class="org-header-inner">
-    <div class="org-avatar">🔌</div>
-    <div class="org-info">
-      <div class="org-name">Model Context Protocol</div>
-      <div class="org-handle">@mcp-official</div>
-      <div class="org-desc">
-        MCP (Model Context Protocol) 是一套开放协议，让 AI 模型能够安全地访问本地和远程资源。
-        收录官方及社区贡献的 MCP 服务器、客户端和工具集。
-      </div>
-      <div class="org-meta">
-        <span>🌐 <a href="#">modelcontextprotocol.io</a></span>
-        <span>👥 <strong>2,340</strong> 成员</span>
-        <span>📦 <strong>127</strong> 个仓库</span>
-        <span>⭐ <strong>48.2k</strong> stars</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="org-tabs">
-    <a class="tab active" href="#">
-      📦 仓库 <span class="count">127</span>
-    </a>
-    <a class="tab" href="#">
-      📋 包 <span class="count">89</span>
-    </a>
-    <a class="tab" href="#">
-      👥 成员 <span class="count">2.3k</span>
-    </a>
-    <a class="tab" href="#">
-      🗂️ 项目 <span class="count">12</span>
-    </a>
-  </div>
-</div>
-
-<!-- ══ MAIN ══ -->
-<div class="main">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-title">置顶仓库</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;">
-          <div style="color:var(--link);font-weight:600;font-size:13px;margin-bottom:4px;">📡 mcp-specification</div>
-          <div style="color:var(--text-muted);font-size:12px;">MCP 协议官方规范文档</div>
-          <div style="margin-top:8px;font-size:12px;color:var(--text-muted);">⭐ 12.4k</div>
+    <div class="card">
+        <h1>🔐 SSO 测试</h1>
+        <p>好未来统一登录测试</p>
+        <div id="loginPanel">
+            <button class="login-btn" onclick="login()">造物神登录</button>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;">
-          <div style="color:var(--link);font-weight:600;font-size:13px;margin-bottom:4px;">🛠️ create-mcp-server</div>
-          <div style="color:var(--text-muted);font-size:12px;">快速创建 MCP 服务器的脚手架</div>
-          <div style="margin-top:8px;font-size:12px;color:var(--text-muted);">⭐ 8.7k</div>
+        <div id="userPanel" style="display:none;">
+            <div class="user-info">
+                <strong>👤 用户信息</strong>
+                <pre id="userInfo" style="margin-top:10px;font-size:12px;overflow:auto"></pre>
+            </div>
+            <button class="logout-btn" onclick="logout()">退出登录</button>
         </div>
-      </div>
+        <div id="errorMsg"></div>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-title">按主题筛选</div>
-      <div>
-        <a class="topic-tag active" href="#" onclick="filterByTag(this,'all');return false">全部</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'server');return false">server</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'client');return false">client</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'database');return false">database</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'filesystem');return false">filesystem</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'web');return false">web</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'ai');return false">ai</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'cloud');return false">cloud</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'sdk');return false">sdk</a>
-        <a class="topic-tag" href="#" onclick="filterByTag(this,'tools');return false">tools</a>
-      </div>
-    </div>
+    <script>
+        const API_BASE = 'https://sso-calk-server-ptfnvdwoua.cn-beijing.fcapp.run';
+        const APP_ID = '1776997362';
+        const LOGIN_URL = 'https://service.100tal.com/new/sso/login';
+        const LOGOUT_URL = 'https://service.100tal.com/new/sso/logout';
 
-    <div class="sidebar-section">
-      <div class="sidebar-title">按语言筛选</div>
-      <div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#f1e05a"></span>JavaScript</span><span class="lang-count">43</span></div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#3178c6"></span>TypeScript</span><span class="lang-count">38</span></div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#3572A5"></span>Python</span><span class="lang-count">27</span></div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#00ADD8"></span>Go</span><span class="lang-count">11</span></div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#b07219"></span>Java</span><span class="lang-count">5</span></div>
-        <div class="lang-item"><span class="lang-left"><span class="lang-dot" style="background:#dea584"></span>Rust</span><span class="lang-count">3</span></div>
-      </div>
-    </div>
-  </aside>
+        function getCode() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('code');
+        }
 
-  <!-- REPO LIST -->
-  <main>
-    <div class="filter-bar">
-      <input class="filter-input" type="text" placeholder="🔍 在 127 个仓库中搜索..." id="repoSearch" oninput="filterRepos()" />
-      <select class="sort-select" onchange="sortRepos(this.value)">
-        <option value="stars">⭐ 按 Stars 排序</option>
-        <option value="updated">🕐 最近更新</option>
-        <option value="name">🔤 按名称排序</option>
-      </select>
-    </div>
+        function login() {
+            const redirectUri = window.location.href.split('?')[0];
+            window.location.href = `${LOGIN_URL}?appId=${APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        }
 
-    <div class="repo-list-header">
-      <div class="repo-count"><strong id="visibleCount">12</strong> 个仓库</div>
-    </div>
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/api/sso/logout`, { method: 'POST' });
+            } catch(e) {}
+            localStorage.removeItem('user');
+            window.location.href = `${LOGOUT_URL}?appId=${APP_ID}`;
+        }
 
-    <div id="repoList"></div>
+        function showUser(data) {
+            document.getElementById('loginPanel').style.display = 'none';
+            document.getElementById('userPanel').style.display = 'block';
+            document.getElementById('userInfo').textContent = JSON.stringify(data, null, 2);
+        }
 
-    <div class="pagination" id="pagination"></div>
-  </main>
-</div>
+        function showError(msg) {
+            document.getElementById('errorMsg').innerHTML = `<div class="error">❌ ${msg}</div>`;
+        }
 
-<!-- FOOTER -->
-<footer>
-  <div style="margin-bottom:8px;">
-    <a href="#">关于</a>
-    <a href="#">文档</a>
-    <a href="#">API</a>
-    <a href="#">协议规范</a>
-    <a href="#">贡献指南</a>
-    <a href="#">联系我们</a>
-  </div>
-  <div>© 2025 MCP Hub · 基于 <a href="#">MIT 开源协议</a> · <a href="#">隐私政策</a></div>
-</footer>
+        async function handleCallback() {
+            const code = getCode();
+            if (!code) return;
 
-<script>
-  // ==================== SSO 登录模块 ====================
-  const API_BASE = 'https://sso-calk-server-ptfnvdwoua.cn-beijing.fcapp.run';
-  const SSO_CONFIG = {
-    appId: '1776997362',
-    loginUrl: 'https://service.100tal.com/new/sso/login',
-    logoutUrl: 'https://service.100tal.com/new/sso/logout'
-  };
+            document.getElementById('loginPanel').innerHTML = '<button class="login-btn" disabled>登录中...</button>';
 
-  function showToast(message, type = 'success') {
-    const existingToast = document.querySelector('.toast');
-    if (existingToast) existingToast.remove();
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
+            try {
+                const res = await fetch(`${API_BASE}/api/sso/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code })
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    localStorage.setItem('user', JSON.stringify(result.data));
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    showUser(result.data);
+                } else {
+                    showError('登录失败: ' + (result.message || '未知错误'));
+                    document.getElementById('loginPanel').innerHTML = '<button class="login-btn" onclick="login()">重新登录</button>';
+                }
+            } catch (err) {
+                showError('网络错误: ' + err.message);
+                document.getElementById('loginPanel').innerHTML = '<button class="login-btn" onclick="login()">重新登录</button>';
+            }
+        }
 
-  function getCodeFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('code');
-  }
-
-  function renderSSOButton() {
-    const container = document.getElementById('ssoContainer');
-    container.innerHTML = `
-      <button class="sso-login-btn" onclick="ssoLogin()">
-        🔐 造物神登录
-      </button>
-    `;
-  }
-
-  function renderUserBadge(userData) {
-    const userName = userData.name || userData.userName || userData.nickname || userData.employeeName || '用户';
-    const container = document.getElementById('ssoContainer');
-    container.innerHTML = `
-      <div class="user-badge" onclick="toggleUserMenu()">
-        <span class="user-avatar">👤</span>
-        <span>${userName}</span>
-        <span class="logout-link" onclick="event.stopPropagation(); ssoLogout()">退出</span>
-      </div>
-    `;
-  }
-
-  window.ssoLogin = function() {
-    const redirectUri = window.location.href.split('?')[0];
-    const loginUrl = `${SSO_CONFIG.loginUrl}?appId=${SSO_CONFIG.appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-    window.location.href = loginUrl;
-  };
-
-  window.ssoLogout = async function() {
-    try {
-      await fetch(`${API_BASE}/api/sso/logout`, { method: 'POST' });
-    } catch(e) {}
-    localStorage.removeItem('ssoUser');
-    window.location.href = `${SSO_CONFIG.logoutUrl}?appId=${SSO_CONFIG.appId}`;
-  };
-
-  async function handleSSOCallback() {
-    const code = getCodeFromUrl();
-    if (!code) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/api/sso/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code })
-      });
-      const result = await response.json();
-      
-      if (result.success) {
-        localStorage.setItem('ssoUser', JSON.stringify(result.data));
-        window.history.replaceState({}, document.title, window.location.pathname);
-        renderUserBadge(result.data);
-        showToast(`欢迎回来，${result.data.name || result.data.userName || '用户'}！`, 'success');
-      } else {
-        renderSSOButton();
-        showToast('登录失败: ' + (result.message || '未知错误'), 'error');
-      }
-    } catch (error) {
-      console.error('SSO error:', error);
-      renderSSOButton();
-      showToast('网络错误: ' + error.message, 'error');
-    }
-  }
-
-  function initSSO() {
-    const savedUser = localStorage.getItem('ssoUser');
-    if (savedUser) {
-      try {
-        renderUserBadge(JSON.parse(savedUser));
-      } catch(e) { renderSSOButton(); }
-    } else {
-      handleSSOCallback();
-    }
-  }
-
-  // ==================== 原有 MCP 仓库功能 ====================
-  const REPOS = [
-    { name: "mcp-specification", desc: "The official Model Context Protocol specification — defining the standard for AI-to-tool communication.", tags: ["specification", "protocol", "official"], lang: "Markdown", langColor: "#083fa1", stars: 12400, forks: 834, updated: "2小时前", badge: "Public" },
-    { name: "servers", desc: "官方 MCP 服务器参考实现集合，包含文件系统、数据库、浏览器、搜索等各类工具。", tags: ["server", "reference", "tools", "official"], lang: "TypeScript", langColor: "#3178c6", stars: 9800, forks: 1230, updated: "5小时前", badge: "Public" },
-    { name: "create-mcp-server", desc: "Zero-config CLI scaffold for creating MCP servers. Get started in seconds.", tags: ["sdk", "cli", "server", "scaffold"], lang: "TypeScript", langColor: "#3178c6", stars: 8700, forks: 420, updated: "1天前", badge: "Public" },
-    { name: "mcp-filesystem-server", desc: "MCP server for secure local filesystem access — read, write, list, and search files within allowed directories.", tags: ["server", "filesystem", "tools"], lang: "TypeScript", langColor: "#3178c6", stars: 5200, forks: 310, updated: "3天前", badge: "Public" },
-    { name: "mcp-postgres-server", desc: "PostgreSQL MCP server — AI models can read schemas, execute queries, and explore relational data safely.", tags: ["server", "database", "postgresql"], lang: "TypeScript", langColor: "#3178c6", stars: 4800, forks: 270, updated: "2天前", badge: "Public" },
-    { name: "mcp-github-server", desc: "GitHub MCP server: search repos, read code, manage issues and PRs directly from AI assistants.", tags: ["server", "github", "web", "tools"], lang: "TypeScript", langColor: "#3178c6", stars: 4400, forks: 250, updated: "4小时前", badge: "Public" },
-    { name: "mcp-web-search-server", desc: "Web search MCP server powered by multiple search engines. Enable AI models to browse the web in real time.", tags: ["server", "web", "search"], lang: "Python", langColor: "#3572A5", stars: 3900, forks: 195, updated: "1天前", badge: "Public" },
-    { name: "mcp-python-sdk", desc: "Official Python SDK for building and connecting to MCP servers. Supports async, streaming, and tool registration.", tags: ["sdk", "python", "client"], lang: "Python", langColor: "#3572A5", stars: 3500, forks: 340, updated: "6小时前", badge: "Public" },
-    { name: "mcp-typescript-sdk", desc: "Official TypeScript/Node.js SDK for the Model Context Protocol. Type-safe, fast, and easy to use.", tags: ["sdk", "typescript", "client"], lang: "TypeScript", langColor: "#3178c6", stars: 3200, forks: 290, updated: "8小时前", badge: "Public" },
-    { name: "mcp-browser-server", desc: "Headless browser MCP server using Playwright. Enables AI models to navigate, screenshot, and scrape pages.", tags: ["server", "browser", "web", "playwright"], lang: "TypeScript", langColor: "#3178c6", stars: 2900, forks: 180, updated: "2天前", badge: "Public" },
-    { name: "mcp-slack-server", desc: "Slack MCP server — list channels, send messages, search history, and manage workspace resources.", tags: ["server", "slack", "tools", "cloud"], lang: "TypeScript", langColor: "#3178c6", stars: 2600, forks: 140, updated: "3天前", badge: "Public" },
-    { name: "mcp-go-sdk", desc: "Go language SDK for implementing MCP servers and clients. High-performance and production-ready.", tags: ["sdk", "go", "client", "server"], lang: "Go", langColor: "#00ADD8", stars: 2100, forks: 120, updated: "5天前", badge: "Public" },
-    { name: "mcp-mysql-server", desc: "MySQL/MariaDB MCP server for safe SQL execution and schema introspection in AI workflows.", tags: ["server", "database", "mysql"], lang: "Python", langColor: "#3572A5", stars: 1900, forks: 95, updated: "4天前", badge: "Public" },
-    { name: "mcp-aws-server", desc: "AWS services MCP server — S3, DynamoDB, Lambda, EC2 and more, accessible from any MCP client.", tags: ["server", "cloud", "aws"], lang: "TypeScript", langColor: "#3178c6", stars: 1750, forks: 88, updated: "1天前", badge: "Public" },
-    { name: "mcp-vector-search-server", desc: "Vector database MCP server supporting Pinecone, Weaviate, and Qdrant for semantic search use cases.", tags: ["server", "ai", "database", "vector"], lang: "Python", langColor: "#3572A5", stars: 1600, forks: 72, updated: "6天前", badge: "Public" },
-    { name: "mcp-inspector", desc: "Visual tool for testing and debugging MCP servers. See requests, responses, and tool calls in real time.", tags: ["tools", "debug", "inspector"], lang: "TypeScript", langColor: "#3178c6", stars: 1400, forks: 65, updated: "2天前", badge: "Public" }
-  ];
-
-  const PER_PAGE = 8;
-  let currentPage = 1;
-  let filtered = [...REPOS];
-  let activeTag = 'all';
-  let starredSet = new Set();
-
-  function renderRepos() {
-    const start = (currentPage - 1) * PER_PAGE;
-    const slice = filtered.slice(start, start + PER_PAGE);
-    const list = document.getElementById('repoList');
-    document.getElementById('visibleCount').textContent = filtered.length;
-
-    list.innerHTML = slice.map((r, i) => `
-      <div class="repo-card" data-tags="${r.tags.join(',')}">
-        <div class="repo-card-top">
-          <a class="repo-name" href="#">
-            📦 ${r.name}
-            <span class="repo-badge">${r.badge}</span>
-          </a>
-          <button class="star-btn ${starredSet.has(r.name)?'starred':''}" onclick="toggleStar(this,'${r.name}')">
-            ${starredSet.has(r.name)?'★':'☆'} ${starredSet.has(r.name)?'已 Star':'Star'}
-          </button>
-        </div>
-        <div class="repo-desc">${r.desc}</div>
-        <div class="repo-tags">
-          ${r.tags.map(t=>`<a class="repo-tag" href="#" onclick="filterByTag(null,'${t}');return false">${t}</a>`).join('')}
-        </div>
-        <div class="repo-meta">
-          <span><span class="lang-indicator" style="background:${r.langColor}"></span>${r.lang}</span>
-          <span>⭐ ${fmtNum(r.stars)}</span>
-          <span>🍴 ${fmtNum(r.forks)}</span>
-          <span>🕐 更新于 ${r.updated}</span>
-        </div>
-      </div>
-    `).join('');
-    renderPagination();
-  }
-
-  function renderPagination() {
-    const total = Math.ceil(filtered.length / PER_PAGE);
-    const p = document.getElementById('pagination');
-    if (total <= 1) { p.innerHTML = ''; return; }
-    let html = '';
-    html += `<a class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'style="pointer-events:none;opacity:.4"':''}>‹ 上一页</a>`;
-    for (let i = 1; i <= total; i++) {
-      html += `<a class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</a>`;
-    }
-    html += `<a class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'style="pointer-events:none;opacity:.4"':''}>下一页 ›</a>`;
-    p.innerHTML = html;
-  }
-
-  function goPage(n) {
-    const total = Math.ceil(filtered.length / PER_PAGE);
-    if (n < 1 || n > total) return;
-    currentPage = n;
-    renderRepos();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function filterRepos() {
-    const q = document.getElementById('repoSearch').value.toLowerCase();
-    filtered = REPOS.filter(r => {
-      const matchText = r.name.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q);
-      const matchTag = activeTag === 'all' || r.tags.includes(activeTag);
-      return matchText && matchTag;
-    });
-    currentPage = 1;
-    renderRepos();
-  }
-
-  function filterByTag(el, tag) {
-    activeTag = tag;
-    document.querySelectorAll('.topic-tag').forEach(t => t.classList.remove('active'));
-    if (el) el.classList.add('active');
-    else {
-      document.querySelectorAll('.topic-tag').forEach(t => {
-        if (t.textContent.trim() === tag) t.classList.add('active');
-      });
-    }
-    filterRepos();
-  }
-
-  function sortRepos(by) {
-    if (by === 'stars') filtered.sort((a,b) => b.stars - a.stars);
-    else if (by === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
-    currentPage = 1;
-    renderRepos();
-  }
-
-  function toggleStar(btn, name) {
-    if (starredSet.has(name)) {
-      starredSet.delete(name);
-      const r = REPOS.find(x=>x.name===name);
-      r.stars--;
-      btn.classList.remove('starred');
-      btn.innerHTML = '☆ Star';
-    } else {
-      starredSet.add(name);
-      const r = REPOS.find(x=>x.name===name);
-      r.stars++;
-      btn.classList.add('starred');
-      btn.innerHTML = '★ 已 Star';
-    }
-  }
-
-  function fmtNum(n) {
-    return n >= 1000 ? (n/1000).toFixed(1)+'k' : n;
-  }
-
-  // Nav search syncs with repo search
-  document.getElementById('navSearch').addEventListener('input', function() {
-    document.getElementById('repoSearch').value = this.value;
-    filterRepos();
-  });
-
-  // Init
-  filtered.sort((a,b) => b.stars - a.stars);
-  renderRepos();
-  initSSO();
-</script>
+        const saved = localStorage.getItem('user');
+        if (saved) {
+            try {
+                showUser(JSON.parse(saved));
+            } catch(e) {
+                handleCallback();
+            }
+        } else {
+            handleCallback();
+        }
+    </script>
 </body>
 </html>
